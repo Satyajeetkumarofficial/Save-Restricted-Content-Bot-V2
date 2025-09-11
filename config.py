@@ -9,9 +9,7 @@ INST_COOKIES = """
 # wtite up here insta cookies
 """
 
-YTUB_COOKIES = """
-# write here yt cookies
-"""
+YTUB_COOKIES = """cookies.txt"""
 
 API_ID = int(getenv("API_ID", ""))
 API_HASH = getenv("API_HASH", "")
