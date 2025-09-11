@@ -9,7 +9,13 @@ INST_COOKIES = """
 # wtite up here insta cookies
 """
 
-YTUB_COOKIES = "cookies.txt"
+# YouTube cookies
+YTUB_COOKIES = """
+# Netscape HTTP Cookie File
+.youtube.com    TRUE    /   TRUE    1753948626    VISITOR_INFO1_LIVE    3fr8im8aKqQ
+.youtube.com    TRUE    /   TRUE    1753948626    VISITOR_PRIVACY_METADATA    CgJJThIEGgAgRw%3D%3D
+...
+"""
 
 API_ID = int(getenv("API_ID", ""))
 API_HASH = getenv("API_HASH", "")
