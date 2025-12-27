@@ -608,7 +608,7 @@ async def send_settings_message(chat_id, user_id):
     buttons = [
         [Button.inline("🆔 Set Chat ID", b'setchat'), Button.inline("🏷️ Set Rename Tag", b'setrename')],
         [Button.inline("📝 Caption", b'setcaption'), Button.inline("🔄 Replace Words", b'setreplacement')],
-        [Button.inline("🛑 Remove Words", b'delete'), Button.inline("🧹 Reset", b'reset')],
+        [Button.inline("🛑 Remove Words", b'delete'), Button.inline("🧹 Reset Setting", b'reset')],
         [Button.inline("🔐 Session Login", b'addsession'), Button.inline("🚪 Logout", b'logout')],
         [Button.inline("🖼 Set Thumbnail", b'setthumb'), Button.inline("🗑️ Remove Thumbnail", b'remthumb')],
         [Button.inline("📄 PDF Wtmrk", b'pdfwt'), Button.inline("🎥 Video Wtmrk", b'watermark')],
