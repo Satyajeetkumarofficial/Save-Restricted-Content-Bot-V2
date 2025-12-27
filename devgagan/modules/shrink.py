@@ -69,8 +69,8 @@ async def token_handler(client, message):
     join = await subscribe(client, message)
     if join == 1:
         return
-    chat_id = "save_restricted_content_bots"
-    msg = await app.get_messages(chat_id, 796)
+    chat_id = "ProBotXUpdate"
+    msg = await app.get_messages(chat_id, 25)
     user_id = message.chat.id
     if len(message.command) <= 1:
         image_url = "https://i.ibb.co/Dfy4G24J/20251227-135116.jpg"
