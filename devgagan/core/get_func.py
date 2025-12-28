@@ -1138,3 +1138,42 @@ async def split_and_upload_file(app, sender, target_chat_id, file_path, caption,
 
     await start.delete()
     os.remove(file_path)
+
+
+@gf.on(events.NewMessage(incoming=True, pattern='/lockedlist'))
+async def lockedlist_command_handler(event):
+    if event.sender_id not in OWNER_ID:
+        return await event.respond("❌ You are not authorized to use this command.")
+
+    channels = collection.find()
+
+    text = "🔒 **Locked Channels List** 🔒\n\n"
+    count = 0
+
+    for ch in channels:
+        text += f"• `{ch['channel_id']}`\n"
+        count += 1
+
+    if count == 0:
+        return await event.respond("⚠️ No locked channels found.")
+
+    text += f"\n📊 **Total Locked:** {count}"
+    await event.respond(text)
+
+
+@gf.on(events.NewMessage(incoming=True, pattern='/unlock'))
+async def unlock_command_handler(event):
+    if event.sender_id not in OWNER_ID:
+        return await event.respond("❌ You are not authorized to use this command.")
+
+    try:
+        channel_id = int(event.text.split(" ")[1])
+    except (IndexError, ValueError):
+        return await event.respond("⚠️ Usage: /unlock CHANNEL_ID")
+
+    result = collection.find_one_and_delete({"channel_id": channel_id})
+
+    if result:
+        await event.respond(f"🔓 Channel `{channel_id}` unlocked successfully.")
+    else:
+        await event.respond("❌ This channel is not locked.")
