@@ -1140,7 +1140,7 @@ async def split_and_upload_file(app, sender, target_chat_id, file_path, caption,
     os.remove(file_path)
 
 
-@gf.on(events.NewMessage(incoming=True, pattern='/lockedlist'))
+@gf.on(events.NewMessage(incoming=True, pattern='/clock'))
 async def lockedlist_command_handler(event):
     if event.sender_id not in OWNER_ID:
         return await event.respond("❌ You are not authorized to use this command.")
