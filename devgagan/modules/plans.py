@@ -239,4 +239,25 @@ async def refresh_users(_, message):
         f"> **Not Removed Users:**\n{not_removed_text}"
     )
     await message.reply(summary)
+
+
+@app.on_message(filters.command("pcheck") & filters.user(OWNER_ID))
+async def pcheck_premium_users(client, message):
+    users = await plans_db.premium_users()  # list of user_ids
+
+    if not users:
+        await message.reply_text("❌ No premium users found.")
+        return
+
+    text = "⚜️ **Premium Users List** ⚜️\n\n"
+    tz = pytz.timezone("Asia/Kolkata")
+
+    for user_id in users:
+        data = await plans_db.check_premium(user_id)
+        if data and data.get("expire_date"):
+            expiry = data["expire_date"].astimezone(tz)
+            expiry_str = expiry.strftime("%d-%m-%Y | %I:%M:%S %p")
+            text += f"👤 **User ID:** <code>{user_id}</code>\n⌛ **Expiry:** {expiry_str}\n\n"
+
+    await message.reply_text(text)
     
