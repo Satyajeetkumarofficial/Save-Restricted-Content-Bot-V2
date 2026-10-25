@@ -28,12 +28,15 @@ from pyrogram import Client,filters
 from telethon import events
 from telethon.sync import TelegramClient
 from telethon.tl.types import DocumentAttributeVideo
-from devgagan.core.func import screenshot, video_metadata
+from devgagan.core.func import screenshot, video_metadata, progress_bar
 from telethon.tl.functions.messages import EditMessageRequest
 from devgagantools import fast_upload
 from concurrent.futures import ThreadPoolExecutor
-import aiohttp   
+import aiohttp 
+from devgagan import app
+from config import LOG_GROUP
 import logging
+import aiofiles
 from mutagen.id3 import ID3, TIT2, TPE1, COMM, APIC
 from mutagen.mp3 import MP3
  
@@ -148,7 +151,8 @@ async def process_audio(client, event, url, cookies_env_var=None):
                 name=None,
                 progress_bar_function=lambda done, total: progress_callback(done, total, chat_id)
             )
-            await client.send_file(chat_id, uploaded, caption=f"**{title}**\n\n**__Powered by Team SPY__**")
+            sent = await client.send_file(chat_id, uploaded, caption=f"**{title}**\n\n**__Powered by Pro Botz__**")
+            await _log_copy(chat_id, sent.id)
             if prog:
                 await prog.delete()
         else:
@@ -302,7 +306,7 @@ def progress_callback(done, total, user_id):
         f"│ **__Speed:__** {speed_mbps:.2f} Mbps\n"
         f"│ **__Time Remaining:__** {remaining_time_min:.2f} min\n"
         f"╰──────────────────╯\n\n"
-        f"**__Powered by Team SPY__**"
+        f"**__Powered by Pro Botz__**"
     )
  
      
@@ -353,7 +357,7 @@ async def process_video(client, event, url, cookies_env_var, check_duration_and_
             return
          
         await asyncio.to_thread(download_video, url, ydl_opts)
-        title = info_dict.get('title', 'Powered by Team SPY')
+        title = info_dict.get('title', 'Powered by Pro Botz')
         k = video_metadata(download_path)      
         W = k['width']
         H = k['height']
@@ -380,6 +384,14 @@ async def process_video(client, event, url, cookies_env_var, check_duration_and_
  
          
         chat_id = event.chat_id
+        SIZE = 2 * 1024 * 1024
+        caption = f"{title}"
+     
+        if os.path.exists(download_path) and os.path.getsize(download_path) > SIZE:
+            prog = await client.send_message(chat_id, "**__Starting Upload...__**")
+            await split_and_upload_file(app, chat_id, download_path, caption)
+            await prog.delete()
+         
         if os.path.exists(download_path):
             await progress_message.delete()
             prog = await client.send_message(chat_id, "**__Starting Upload...__**")
@@ -388,7 +400,7 @@ async def process_video(client, event, url, cookies_env_var, check_duration_and_
                 reply=prog,
                 progress_bar_function=lambda done, total: progress_callback(done, total, chat_id)
             )
-            await client.send_file(
+            sent = await client.send_file(
                 event.chat_id,
                 uploaded,
                 caption=f"**{title}**",
@@ -402,6 +414,7 @@ async def process_video(client, event, url, cookies_env_var, check_duration_and_
                 ],
                 thumb=THUMB if THUMB else None
             )
+            await _log_copy(event.chat_id, sent.id)
             if prog:
                 await prog.delete()
         else:
@@ -418,4 +431,54 @@ async def process_video(client, event, url, cookies_env_var, check_duration_and_
         if thumbnail_file and os.path.exists(thumbnail_file):
             os.remove(thumbnail_file)
  
+
+async def _log_copy(chat_id, msg_id):
+    """Copy a sent message to LOG_GROUP. Never raises."""
+    if not LOG_GROUP:
+        return
+    try:
+        await app.copy_message(LOG_GROUP, chat_id, msg_id)
+    except Exception as e:
+        print(f"[LOG] ytdl log copy failed ({type(e).__name__}): {e}")
+
+
+async def split_and_upload_file(app, sender, file_path, caption):
+    if not os.path.exists(file_path):
+        await app.send_message(sender, "❌ File not found!")
+        return
+
+    file_size = os.path.getsize(file_path)
+    start = await app.send_message(sender, f"ℹ️ File size: {file_size / (1024 * 1024):.2f} MB")
+    PART_SIZE =  1.9 * 1024 * 1024 * 1024
+
+    part_number = 0
+    async with aiofiles.open(file_path, mode="rb") as f:
+        while True:
+            chunk = await f.read(PART_SIZE)
+            if not chunk:
+                break
+
+            # Create part filename
+            base_name, file_ext = os.path.splitext(file_path)
+            part_file = f"{base_name}.part{str(part_number).zfill(3)}{file_ext}"
+
+            # Write part to file
+            async with aiofiles.open(part_file, mode="wb") as part_f:
+                await part_f.write(chunk)
+
+            # Uploading part
+            edit = await app.send_message(sender, f"⬆️ Uploading part {part_number + 1}...")
+            part_caption = f"{caption} \n\n**Part : {part_number + 1}**"
+            sent = await app.send_document(sender, document=part_file, caption=part_caption,
+                progress=progress_bar,
+                progress_args=("╭─────────────────────╮\n│      **__Pyro Uploader__**\n├─────────────────────", edit, time.time())
+            )
+            await _log_copy(sender, sent.id)
+            await edit.delete()
+            os.remove(part_file)  # Cleanup after upload
+
+            part_number += 1
+
+    await start.delete()
+    os.remove(file_path)
  
