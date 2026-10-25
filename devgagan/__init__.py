@@ -7,21 +7,22 @@
 # Telegram: https://t.me/team_spy_pro
 # YouTube: https://youtube.com/@dev_gagan
 # Created: 2025-01-11
-# Last Modified: 2025-01-11
-# Version: 2.0.5
+# Last Modified: 2025-09-11 (FloodWait fix by ChatGPT)
+# Version: 2.0.6
 # License: MIT License
 # ---------------------------------------------------
 
 import asyncio
 import logging
-from pyrogram import Client
-from pyrogram.enums import ParseMode 
-from config import API_ID, API_HASH, BOT_TOKEN, STRING, MONGO_DB
-from telethon.sync import TelegramClient
-from motor.motor_asyncio import AsyncIOMotorClient
 import time
+from pyrogram import Client
+from pyrogram.enums import ParseMode
+from config import API_ID, API_HASH, BOT_TOKEN, STRING, MONGO_DB, DEFAULT_SESSION
+from telethon import TelegramClient, errors
+from motor.motor_asyncio import AsyncIOMotorClient
 
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 logging.basicConfig(
     format="[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s",
@@ -30,8 +31,9 @@ logging.basicConfig(
 
 botStartTime = time.time()
 
+# Main Pyrogram Bot
 app = Client(
-    ":RestrictBot:",
+    "pyrobot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
@@ -39,10 +41,33 @@ app = Client(
     parse_mode=ParseMode.MARKDOWN
 )
 
-pro = Client("ggbot", api_id=API_ID, api_hash=API_HASH, session_string=STRING)
+# ✅ FloodWait safe Telethon start
+async def start_telethon_session(session_name):
+    while True:
+        try:
+            client = TelegramClient(session_name, API_ID, API_HASH)
+            await client.start(bot_token=BOT_TOKEN)
+            logging.info(f"{session_name} started successfully!")
+            return client
+        except errors.FloodWaitError as e:
+            logging.warning(f"FloodWaitError: Waiting for {e.seconds} seconds before retrying {session_name}...")
+            await asyncio.sleep(e.seconds + 5)
 
-sex = TelegramClient('sexrepo', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+# Start telethon sessions safely
+sex = loop.run_until_complete(start_telethon_session("sexrepo"))
+telethon_client = loop.run_until_complete(start_telethon_session("telethon_session"))
 
+# Optional extra client with string session
+if STRING:
+    pro = Client("ggbot", api_id=API_ID, api_hash=API_HASH, session_string=STRING)
+else:
+    pro = None
+
+# Optional userbot session
+if DEFAULT_SESSION:
+    userrbot = Client("userrbot", api_id=API_ID, api_hash=API_HASH, session_string=DEFAULT_SESSION)
+else:
+    userrbot = None
 
 # MongoDB setup
 tclient = AsyncIOMotorClient(MONGO_DB)
@@ -56,9 +81,7 @@ async def create_ttl_index():
 # Run the TTL index creation when the bot starts
 async def setup_database():
     await create_ttl_index()
-    print("MongoDB TTL index created.")
-
-# You can call this in your main bot file before starting the bot
+    logging.info("MongoDB TTL index created.")
 
 async def restrict_bot():
     global BOT_ID, BOT_NAME, BOT_USERNAME
@@ -67,11 +90,11 @@ async def restrict_bot():
     getme = await app.get_me()
     BOT_ID = getme.id
     BOT_USERNAME = getme.username
-    if getme.last_name:
-        BOT_NAME = getme.first_name + " " + getme.last_name
-    else:
-        BOT_NAME = getme.first_name
-    if STRING:
+    BOT_NAME = f"{getme.first_name} {getme.last_name}" if getme.last_name else getme.first_name
+    
+    if pro:
         await pro.start()
+    if userrbot:
+        await userrbot.start()
 
 loop.run_until_complete(restrict_bot())
